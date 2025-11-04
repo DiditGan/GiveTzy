@@ -1,0 +1,35 @@
+steps:
+  # Step 1: Install dependencies (pakai npm install jika tidak ada package-lock.json)
+  - name: "gcr.io/cloud-builders/npm"
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        echo "Installing dependencies..."
+        npm ci
+    dir: "Frontend"
+    volumes:
+      - name: "npm-cache"
+        path: /root/.npm
+
+  # Step 2: Build frontend
+  - name: "gcr.io/cloud-builders/npm"
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        echo "Running npm build..."
+        npm run build
+    dir: "Frontend"
+    volumes:
+      - name: "npm-cache"
+        path: /root/.npm
+
+  # Step 3: Deploy ke App Engine
+  - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
+    entrypoint: gcloud
+    args: ["app", "deploy", "--quiet"]
+    dir: "Frontend"
+
+options:
+  logging: CLOUD_LOGGING_ONLY

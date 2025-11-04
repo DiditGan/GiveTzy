@@ -1,0 +1,194 @@
+@host = https://givetzy-backend-469569820136.us-central1.run.app
+@cloudRunHost = https://c-04-460105.uc.r.appspot.com/
+@accessToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoxLCJlbWFpbCI6InRlc3RAZXhhbXBsZS5jb20iLCJpYXQiOjE3NDc5Mzc1NTUsImV4cCI6MTc0NzkzODQ1NX0.6ZbumjS3MF7nXPVovCU8M_GEQhyynMU-jb2WRi7DpOk
+@refreshToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoxLCJlbWFpbCI6InRlc3RAZXhhbXBsZS5jb20iLCJpYXQiOjE3NDc5Mzc1NTUsImV4cCI6MTc0ODU0MjM1NX0.3gGGKELDaA_2_nU8iAFYMsRWrQS-d_Le2m9ZWpe1m-Y
+
+### Check API Status (Cloud Run)
+GET {{cloudRunHost}}/api-status
+
+### Check API Status (Local)
+GET {{host}}/api-status
+
+### Test Static File Serving
+GET {{host}}/test-static
+
+### Test Direct Image Access (replace with actual filename)
+GET {{host}}/uploads/products/product-1234567890-123456789.jpg
+
+### Register User
+POST {{host}}/auth/register
+Content-Type: application/json
+
+{
+  "email": "test@example.com",
+  "password": "password123",
+  "name": "Test User",
+  "phone_number": "08123456789",
+  "profile_picture": "https://example.com/profile.jpg"
+}
+
+### Login User
+# This request will set accessToken and refreshToken from the response for use in other requests
+POST {{host}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "test@example.com",
+  "password": "password123"
+}
+
+### Refresh Token - Get New Access Token
+POST {{host}}/auth/refresh-token
+Content-Type: application/json
+
+{
+  "refreshToken": "{{refreshToken}}"
+}
+
+### Logout User
+POST {{host}}/auth/logout
+Content-Type: application/json
+
+{
+  "refreshToken": "{{refreshToken}}"
+}
+
+### Get All Barang
+GET {{host}}/api/barang
+
+### Get Barang by ID
+GET {{host}}/api/barang/1
+
+### Create Barang (Multipart Form - with image file)
+POST {{host}}/api/barang
+Authorization: Bearer {{accessToken}}
+Content-Type: multipart/form-data; boundary=MyBoundary
+
+--MyBoundary
+Content-Disposition: form-data; name="item_name"
+
+Sepeda Gunung
+--MyBoundary
+Content-Disposition: form-data; name="description"
+
+Sepeda gunung merk Polygon, kondisi bagus
+--MyBoundary
+Content-Disposition: form-data; name="category"
+
+Olahraga
+--MyBoundary
+Content-Disposition: form-data; name="price"
+
+1500000
+--MyBoundary
+Content-Disposition: form-data; name="condition"
+
+Bekas
+--MyBoundary
+Content-Disposition: form-data; name="location"
+
+Jakarta
+--MyBoundary
+Content-Disposition: form-data; name="image"; filename="sepeda.jpg"
+Content-Type: image/jpeg
+
+< ./test-images/sepeda.jpg
+--MyBoundary--
+
+### Create Barang (JSON - without image)
+POST {{host}}/api/barang
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+  "item_name": "Laptop Gaming",
+  "description": "Laptop gaming ASUS ROG, spesifikasi tinggi",
+  "category": "Elektronik",
+  "price": 15000000,
+  "condition": "Bekas",
+  "location": "Jakarta"
+}
+
+### Update Barang (Requires auth)
+PUT {{host}}/api/barang/1
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+  "item_name": "Sepeda Gunung",
+  "status": "exchanged"
+}
+
+### Delete Barang (Requires auth)
+DELETE {{host}}/api/barang/1
+Authorization: Bearer {{accessToken}}
+
+### Get All Transaksi (Requires auth)
+GET {{host}}/api/transaksi
+Authorization: Bearer {{accessToken}}
+
+### Get Transaksi by ID (Requires auth)
+GET {{host}}/api/transaksi/1
+Authorization: Bearer {{accessToken}}
+
+### Create Transaksi (Requires auth)
+# Only need to provide item_id, buyer is extracted from token
+POST {{host}}/api/transaksi
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+  "item_id": 1,
+  "transaction_date": "2024-06-01T10:00:00Z",
+  "status": "pending"
+}
+
+### Update Transaksi (Requires auth)
+PUT {{host}}/api/transaksi/1
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+  "status": "completed"
+}
+
+### Delete Transaksi (Requires auth)
+DELETE {{host}}/api/transaksi/1
+Authorization: Bearer {{accessToken}}
+
+### Delete Transaksi (With better access control)
+DELETE {{host}}/api/transaksi/1
+Authorization: Bearer {{accessToken}}
+
+### Delete User Account (Requires password verification)
+DELETE {{host}}/api/deleteAccount
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+  "password": "password123"
+}
+
+### Update Profile with Image (Multipart Form)
+PUT {{host}}/api/profile
+Authorization: Bearer {{accessToken}}
+Content-Type: multipart/form-data; boundary=MyBoundary
+
+--MyBoundary
+Content-Disposition: form-data; name="name"
+
+Updated Test User
+--MyBoundary
+Content-Disposition: form-data; name="phone_number"
+
+08123456789
+--MyBoundary
+Content-Disposition: form-data; name="profileImage"; filename="profile.jpg"
+Content-Type: image/jpeg
+
+< ./test-images/profile.jpg
+--MyBoundary--
+
+### Get My Profile
+GET {{host}}/api/profile
+Authorization: Bearer {{accessToken}}
