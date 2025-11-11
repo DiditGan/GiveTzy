@@ -130,6 +130,7 @@ const TransactionHistoryPage = () => {
                   <ImageWithFallback
                     src={transaction.item?.image_url}
                     alt={transaction.item?.item_name || 'Product Image'}
+                    itemId={transaction.item?.item_id}
                     className="w-20 h-20 object-cover rounded-lg"
                   />
                   <div className="flex-1">

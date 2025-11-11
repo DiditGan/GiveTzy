@@ -2,7 +2,6 @@ import Barang from "../models/BarangModel.js";
 import User from "../models/UserModel.js";
 import { Op } from "sequelize";
 import fs from 'fs';
-import path from 'path';
 
 export const getBarang = async (req, res) => {
   try {
@@ -35,22 +34,11 @@ export const getBarang = async (req, res) => {
     const barang = await Barang.findAll({
       where: whereClause,
       include: [{ model: User, attributes: ['user_id', 'name'] }],
-      order: [[sortField, sortOrder]]
+      order: [[sortField, sortOrder]],
+      attributes: { exclude: ['image_data'] } // Jangan kirim BLOB di list
     });
 
-    // Perbaiki path gambar untuk semua item
-    const barangWithFixedImages = barang.map(item => {
-      const itemData = item.toJSON();
-      if (itemData.image_url && !itemData.image_url.startsWith('http') && !itemData.image_url.startsWith('/uploads')) {
-        itemData.image_url = `/uploads/products/${itemData.image_url}`;
-      }
-      if (!itemData.image_url || itemData.image_url === '/uploads/products/null') {
-        itemData.image_url = null; // Frontend akan handle fallback
-      }
-      return itemData;
-    });
-
-    res.json(barangWithFixedImages);
+    res.json(barang);
   } catch (error) {
     console.error("Get barang error:", error);
     res.status(500).json({ msg: error.message });
@@ -64,21 +52,17 @@ export const getBarangById = async (req, res) => {
     });
     if (!barang) return res.status(404).json({ msg: "Barang tidak ditemukan" });
 
-    // Perbaiki path gambar
-    let image_url = barang.image_url;
-    if (image_url && !image_url.startsWith('http') && !image_url.startsWith('/uploads')) {
-      image_url = `/uploads/products/${image_url}`;
-    }
-    if (!image_url || image_url === '/uploads/products/null') {
-      image_url = null;
-    }
-
     const responseData = {
       ...barang.toJSON(),
-      image_url,
       isOwner: req.userId ? barang.user_id === req.userId : false,
       canPurchase: req.userId ? barang.user_id !== req.userId && barang.status === 'available' : false
     };
+
+    // Jika ada image_data (BLOB), convert ke base64
+    if (barang.image_data) {
+      responseData.image_url = `data:${barang.image_mimetype};base64,${barang.image_data.toString('base64')}`;
+      delete responseData.image_data; // Hapus raw BLOB dari response
+    }
 
     res.json(responseData);
   } catch (error) {
@@ -103,11 +87,28 @@ export const createBarang = async (req, res) => {
       return res.status(400).json({ msg: "Nama barang wajib diisi." });
     }
 
-    // Handle image upload
-    let image_url = null;
+    let image_data = null;
+    let image_mimetype = null;
+
+    // Handle image upload - SIMPAN KE DATABASE SEBAGAI BLOB
     if (req.file) {
-      image_url = `/uploads/products/${req.file.filename}`;
-      console.log("Image path set to:", image_url);
+      try {
+        // Baca file dan convert ke Buffer (BLOB)
+        image_data = fs.readFileSync(req.file.path);
+        image_mimetype = req.file.mimetype;
+        
+        console.log("✅ Image loaded into memory:", {
+          size: image_data.length,
+          mimetype: image_mimetype
+        });
+
+        // Hapus file dari disk setelah dibaca
+        fs.unlinkSync(req.file.path);
+        console.log("🗑️ Temporary file deleted:", req.file.path);
+      } catch (fileError) {
+        console.error("Error reading image file:", fileError);
+        throw new Error("Gagal membaca file gambar");
+      }
     }
 
     const barangData = {
@@ -118,20 +119,27 @@ export const createBarang = async (req, res) => {
       price: price ? parseFloat(price) : null,
       condition,
       location,
-      image_url,
+      image_data, // BLOB data
+      image_mimetype, // MIME type untuk reconstruct nanti
       status,
       date_posted: new Date()
     };
 
     const barang = await Barang.create(barangData);
+    console.log("✅ Barang created with image stored in database");
+    
+    // Response tanpa BLOB
+    const response = barang.toJSON();
+    delete response.image_data;
+    
     res.status(201).json({
       msg: "Barang berhasil ditambahkan",
-      data: barang,
+      data: response,
     });
   } catch (error) {
-    console.error("Create barang error:", error);
-    if (req.file) {
-      // Clean up uploaded file if there's an error
+    console.error("❌ Create barang error:", error);
+    // Cleanup file jika masih ada
+    if (req.file && fs.existsSync(req.file.path)) {
       try {
         fs.unlinkSync(req.file.path);
       } catch (unlinkError) {
@@ -147,13 +155,9 @@ export const updateBarang = async (req, res) => {
     const barang = await Barang.findByPk(req.params.item_id);
     if (!barang) return res.status(404).json({ msg: "Barang tidak ditemukan" });
 
-    // Pastikan hanya owner yang bisa update
     if (barang.user_id !== req.userId) {
       return res.status(403).json({ msg: "Anda tidak memiliki akses untuk update barang ini" });
     }
-    
-    // console.log("📝 Updating barang with data:", req.body); // Optional
-    // console.log("📁 New file uploaded:", req.file ? req.file.filename : \'No\'); // Removed
 
     const { item_name, description, category, price, condition, location, status } = req.body;
     
@@ -167,42 +171,38 @@ export const updateBarang = async (req, res) => {
     if (status !== undefined) updateData.status = status;
     if (price !== undefined) updateData.price = price ? parseFloat(price) : null;
 
-    // Removed image update logic
-    // if (req.file) {
-    //   if (barang.image_url && barang.image_url !== `/uploads/products/${req.file.filename}`) {
-    //     const oldImageAbsolutePath = path.join(__dirname, \'..\', barang.image_url);
-    //     try {
-    //       if (fs.existsSync(oldImageAbsolutePath)) {
-    //         fs.unlinkSync(oldImageAbsolutePath);
-    //         console.log("🗑️ Deleted old image:", oldImageAbsolutePath);
-    //       }
-    //     } catch (deleteError) {
-    //       console.error("Failed to delete old image:", oldImageAbsolutePath, deleteError);
-    //     }
-    //   }
-    //   updateData.image_url = `/uploads/products/${req.file.filename}`;
-    //   console.log("🖼️ Updated image URL to:", updateData.image_url);
-    // }
+    // Handle image update
+    if (req.file) {
+      try {
+        updateData.image_data = fs.readFileSync(req.file.path);
+        updateData.image_mimetype = req.file.mimetype;
+        
+        // Hapus file temporary
+        fs.unlinkSync(req.file.path);
+        console.log("✅ Image updated in database");
+      } catch (fileError) {
+        console.error("Error updating image:", fileError);
+      }
+    }
 
     await barang.update(updateData);
     
     const updatedBarang = await Barang.findByPk(req.params.item_id, {
-      include: [{ model: User, attributes: ['user_id', 'name'] }] // Removed profile_picture
+      include: [{ model: User, attributes: ['user_id', 'name'] }],
+      attributes: { exclude: ['image_data'] }
     });
     
     res.json({ msg: "Barang berhasil diupdate", data: updatedBarang });
   } catch (error) {
     console.error("❌ Update barang error:", error);
     
-    // Removed cleanup of uploaded file
-    // if (req.file) {
-    //   try {
-    //     fs.unlinkSync(req.file.path);
-    //     console.log("🗑️ Cleaned up uploaded file due to error");
-    //   } catch (unlinkError) {
-    //     console.error("Failed to clean up file:", unlinkError);
-    //   }
-    // }
+    if (req.file && fs.existsSync(req.file.path)) {
+      try {
+        fs.unlinkSync(req.file.path);
+      } catch (unlinkError) {
+        console.error("Failed to clean up file:", unlinkError);
+      }
+    }
     
     res.status(400).json({ msg: error.message });
   }
@@ -213,25 +213,12 @@ export const deleteBarang = async (req, res) => {
     const barang = await Barang.findByPk(req.params.item_id);
     if (!barang) return res.status(404).json({ msg: "Barang tidak ditemukan" });
 
-    // Pastikan hanya owner yang bisa hapus
     if (barang.user_id !== req.userId) {
       return res.status(403).json({ msg: "Anda tidak memiliki akses untuk menghapus barang ini" });
     }
 
-    // Removed deletion of image file
-    // if (barang.image_url) {
-    //   const imageAbsolutePath = path.join(__dirname, \'..\', barang.image_url);
-    //   try {
-    //     if (fs.existsSync(imageAbsolutePath)) {
-    //       fs.unlinkSync(imageAbsolutePath);
-    //       console.log(\`🗑️ Deleted image for item ${barang.item_id}: ${imageAbsolutePath}\`);
-    //     }
-    //   } catch (deleteError) {
-    //     console.error(\`Failed to delete image ${imageAbsolutePath}: \`, deleteError);
-    //   }
-    // }
-
     await barang.destroy();
+    console.log("✅ Barang deleted (including BLOB image)");
     res.json({ msg: "Barang berhasil dihapus" });
   } catch (error) {
     console.error("❌ Delete barang error:", error);
@@ -239,7 +226,6 @@ export const deleteBarang = async (req, res) => {
   }
 };
 
-// Get items listed by the authenticated user
 export const getMyBarang = async (req, res) => {
   try {
     const user_id = req.userId;
@@ -252,24 +238,32 @@ export const getMyBarang = async (req, res) => {
 
     const barang = await Barang.findAll({
       where: whereClause,
-      order: [['date_posted', 'DESC']]
+      order: [['date_posted', 'DESC']],
+      attributes: { exclude: ['image_data'] }
     });
 
-    // Perbaiki path gambar
-    const barangWithFixedImages = barang.map(item => {
-      const itemData = item.toJSON();
-      if (itemData.image_url && !itemData.image_url.startsWith('http') && !itemData.image_url.startsWith('/uploads')) {
-        itemData.image_url = `/uploads/products/${itemData.image_url}`;
-      }
-      if (!itemData.image_url || itemData.image_url === '/uploads/products/null') {
-        itemData.image_url = null;
-      }
-      return itemData;
-    });
-
-    res.json(barangWithFixedImages);
+    res.json(barang);
   } catch (error) {
     console.error("Get my barang error:", error);
     res.status(500).json({ msg: error.message });
+  }
+};
+
+// ENDPOINT BARU: Get gambar produk by ID (untuk ditampilkan)
+export const getBarangImage = async (req, res) => {
+  try {
+    const barang = await Barang.findByPk(req.params.item_id, {
+      attributes: ['image_data', 'image_mimetype']
+    });
+
+    if (!barang || !barang.image_data) {
+      return res.status(404).send('Image not found');
+    }
+
+    res.set('Content-Type', barang.image_mimetype);
+    res.send(barang.image_data);
+  } catch (error) {
+    console.error("Get image error:", error);
+    res.status(500).send('Error retrieving image');
   }
 };

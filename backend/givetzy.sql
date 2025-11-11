@@ -63,6 +63,8 @@ CREATE TABLE `items` (
   `condition` enum('Baru','Bekas - Seperti Baru','Bekas - Baik','Bekas - Cukup') NOT NULL DEFAULT 'Bekas - Baik',
   `location` varchar(255) DEFAULT NULL,
   `image_url` varchar(255) DEFAULT NULL,
+  `image_data` LONGBLOB DEFAULT NULL,
+  `image_mimetype` varchar(50) DEFAULT NULL,
   `status` enum('available','sold') NOT NULL DEFAULT 'available',
   `date_posted` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`item_id`),

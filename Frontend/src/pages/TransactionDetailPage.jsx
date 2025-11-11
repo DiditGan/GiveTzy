@@ -166,6 +166,7 @@ const TransactionDetailPage = () => {
               <ImageWithFallback
                 src={tx.item?.image_url}
                 alt={tx.item?.item_name || 'Produk'}
+                itemId={tx.item?.item_id}
                 className="w-full h-64 object-cover rounded-lg"
               />
             </div>

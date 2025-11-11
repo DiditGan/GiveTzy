@@ -465,7 +465,7 @@ const ProfilePage = () => {
                             <div className="flex items-center">
                               {getProfileImageUrl(transaction.item?.image_url || transaction.product?.imageUrl) ? (
                                 <img
-                                  src={getProfileImageUrl(transaction.item?.image_url || transaction.product?.imageUrl)}
+                                  src={`/api/barang/${transaction.item_id || transaction.id}/image`}
                                   alt={transaction.item?.item_name || transaction.product?.name}
                                   className="w-16 h-16 object-cover rounded-md mr-4 bg-gray-100"
                                   onError={(e) => {

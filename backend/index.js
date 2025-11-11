@@ -46,8 +46,9 @@ app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
 app.use("/public", express.static(path.join(path.resolve(), "public")));
 
-// Serve static files from uploads directory
+// Serve static files from uploads directory - PASTIKAN INI ADA DAN SEBELUM ROUTES
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+console.log('📂 Static files served from:', path.join(__dirname, 'uploads'));
 
 // Create necessary directories for uploads
 const uploadsDir = path.join(__dirname, 'uploads');

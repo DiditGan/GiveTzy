@@ -5,7 +5,8 @@ import {
   createBarang,
   updateBarang,
   deleteBarang,
-  getMyBarang
+  getMyBarang,
+  getBarangImage // TAMBAHAN
 } from "../controllers/BarangController.js";
 import { verifyToken } from "../middleware/AuthMiddleware.js";
 import { uploadProductImage } from "../middleware/UploadMiddleware.js";
@@ -15,6 +16,7 @@ const router = express.Router();
 // Public routes
 router.get("/barang", getBarang);
 router.get("/barang/:item_id", getBarangById);
+router.get("/barang/:item_id/image", getBarangImage); // ENDPOINT BARU untuk get gambar
 
 // Protected routes with file upload
 router.post("/barang", verifyToken, uploadProductImage, createBarang);

@@ -1,24 +1,14 @@
-import multer from "multer";
-import path from "path";
-import fs from "fs";
+import multer from 'multer';
+import path from 'path';
 import { fileURLToPath } from 'url';
 
-// Get current directory
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Create uploads directory if it doesn't exist
-const uploadsDir = path.join(__dirname, '../uploads');
+// Create uploads directories
+const uploadsDir = path.join(__dirname, '..', 'uploads');
 const productsDir = path.join(uploadsDir, 'products');
 const profilesDir = path.join(uploadsDir, 'profiles');
-
-// Ensure directories exist
-[uploadsDir, productsDir, profilesDir].forEach(dir => {
-  if (!fs.existsSync(dir)){
-    fs.mkdirSync(dir, { recursive: true });
-    console.log(`Created directory: ${dir}`);
-  }
-});
 
 // Storage configuration for product images
 const productStorage = multer.diskStorage({
@@ -44,10 +34,14 @@ const profileStorage = multer.diskStorage({
 
 // File filter
 const fileFilter = (req, file, cb) => {
-  if (file.mimetype.startsWith('image/')) {
-    cb(null, true);
+  const allowedTypes = /jpeg|jpg|png|gif|webp/;
+  const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+  const mimetype = allowedTypes.test(file.mimetype);
+
+  if (mimetype && extname) {
+    return cb(null, true);
   } else {
-    cb(new Error('Only image files are allowed!'), false);
+    cb(new Error('Only image files are allowed (jpeg, jpg, png, gif, webp)'));
   }
 };
 
@@ -57,7 +51,7 @@ const productUpload = multer({
   fileFilter: fileFilter,
   limits: { 
     fileSize: 5 * 1024 * 1024, // 5MB limit
-    files: 1 // Only one file at a time
+    files: 1
   }
 });
 
@@ -66,7 +60,7 @@ const profileUpload = multer({
   fileFilter: fileFilter,
   limits: { 
     fileSize: 2 * 1024 * 1024, // 2MB limit
-    files: 1 // Only one file at a time
+    files: 1
   }
 });
 
@@ -79,7 +73,6 @@ export const uploadProductImage = (req, res, next) => {
       return res.status(400).json({ msg: err.message });
     }
     
-    // Log for debugging
     if (req.file) {
       console.log('✅ Product image uploaded:', req.file.filename);
       console.log('📁 File path:', req.file.path);
@@ -99,7 +92,6 @@ export const uploadProfileImage = (req, res, next) => {
       return res.status(400).json({ msg: err.message });
     }
     
-    // Log for debugging
     if (req.file) {
       console.log('✅ Profile image uploaded:', req.file.filename);
       console.log('📁 File path:', req.file.path);

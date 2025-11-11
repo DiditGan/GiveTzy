@@ -62,6 +62,14 @@ const Product = db.define("items", {
     type: DataTypes.STRING(255),
     allowNull: true,
   },
+  image_data: {
+    type: DataTypes.BLOB("long"), // LONGBLOB untuk gambar besar (sampai 4GB)
+    allowNull: true,
+  },
+  image_mimetype: {
+    type: DataTypes.STRING(50),
+    allowNull: true,
+  },
   status: {
     type: DataTypes.ENUM("available", "sold"),
     defaultValue: "available",

@@ -5,7 +5,6 @@ import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 
 const API_BASE_URL = "/api";
-const defaultProfileImage = "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80";
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -40,9 +39,25 @@ const Navbar = () => {
   
   // Helper function to get full profile image URL
   const getProfileImageUrl = (imagePath) => {
-    if (!imagePath) return defaultProfileImage;
-    if (imagePath.startsWith('http')) return imagePath;
-    return `${API_BASE_URL}${imagePath}`;
+    if (!imagePath) return null;
+    
+    // If already full URL
+    if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+      return imagePath;
+    }
+    
+    // If starts with /api
+    if (imagePath.startsWith('/api/')) {
+      return imagePath;
+    }
+    
+    // If starts with /uploads, prepend /api
+    if (imagePath.startsWith('/uploads/')) {
+      return `/api${imagePath}`;
+    }
+    
+    // Construct full path
+    return `/api/uploads/profiles/${imagePath}`;
   };
 
   return (
@@ -96,12 +111,17 @@ const Navbar = () => {
                       alt="Profile"
                       className="w-8 h-8 rounded-full border-2 border-green-500 object-cover"
                       onError={(e) => {
-                        e.target.src = defaultProfileImage;
+                        e.target.onerror = null;
+                        e.target.style.display = 'none';
+                        const icon = document.createElement('div');
+                        icon.className = 'w-8 h-8 rounded-full bg-gradient-to-br from-green-400 to-green-600 border-2 border-green-500 flex items-center justify-center';
+                        icon.innerHTML = '<svg class="w-4 h-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>';
+                        e.target.parentElement.appendChild(icon);
                       }}
                     />
                   ) : (
-                    <div className="w-8 h-8 rounded-full bg-gray-300 border-2 border-green-500 flex items-center justify-center animate-pulse">
-                      <svg className="w-4 h-4 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-green-400 to-green-600 border-2 border-green-500 flex items-center justify-center">
+                      <svg className="w-4 h-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                       </svg>
                     </div>

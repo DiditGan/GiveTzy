@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import { useAuth } from "../contexts/AuthContext";
 import { HiMail, HiPhone, HiLocationMarker } from "react-icons/hi";
@@ -9,6 +9,7 @@ const API_BASE_URL = "/api";
 
 const UserProfilePage = () => {
   const { userId } = useParams();
+  const navigate = useNavigate();
   useAuth();
   const [userProfile, setUserProfile] = useState(null);
   const [userProducts, setUserProducts] = useState([]);
@@ -156,7 +157,7 @@ const UserProfilePage = () => {
                         {product.status === 'available' ? 'Tersedia' : 'Terjual'}
                       </span>
                       <button
-                        onClick={() => window.location.href = `/details/${product.item_id}`}
+                        onClick={() => navigate(`/details/${product.item_id}`)}
                         className="text-sm text-blue-600 hover:text-blue-800"
                       >
                         Lihat Detail →
